@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+  <name>{0}</name>
+  <SSIDConfig>
+    <SSID>
+      <hex>{1}</hex>
+      <name>{0}</name>
+    </SSID>
+    <nonBroadcast>false</nonBroadcast>
+  </SSIDConfig>
+  <connectionType>ESS</connectionType>
+  <connectionMode>auto</connectionMode>
+  <autoSwitch>{2}</autoSwitch>
+  <MSM>
+    <security>
+      <authEncryption>
+        <authentication>WPA2</authentication>
+        <encryption>AES</encryption>
+        <useOneX>true</useOneX>
+        <FIPSMode xmlns="http://www.microsoft.com/networking/WLAN/profile/v2">true</FIPSMode>
+      </authEncryption>
+      <OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
+        <EAPConfig>
+          <EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
+            <EapMethod>
+              <Type xmlns="http://www.microsoft.com/provisioning/EapCommon">25</Type>
+              <VendorId xmlns="http://www.microsoft.com/provisioning/EapCommon">0</VendorId>
+              <VendorType xmlns="http://www.microsoft.com/provisioning/EapCommon">0</VendorType>
+              <AuthorId xmlns="http://www.microsoft.com/provisioning/EapCommon">0</AuthorId>
+            </EapMethod>
+            <ConfigBlob></ConfigBlob>
+          </EapHostConfig>
+        </EAPConfig>
+      </OneX>
+    </security>
+  </MSM>
+</WLANProfile>
+
+<!-- Xp not supported
+	0 = Name
+	1 = HexName
+  2 = autoSwitch(false on Windows 7 and Windows Server 2008 R2, true on Windows Server 2008 and Windows Vista)
+-->

@@ -118,8 +118,8 @@ namespace SimpleWifi.Win32
 		                WlanConnectionNotificationData? connNotifyData =
 		                    WlanHelpers.ParseWlanConnectionNotification(ref notifyData);
 
-		                if (connNotifyData.HasValue && wlanIface != null)
-		                    wlanIface.OnWlanConnection(notifyData, connNotifyData.Value);
+		                if (connNotifyData.HasValue)
+		                    wlanIface?.OnWlanConnection(notifyData, connNotifyData.Value);
 
 		                break;
 		            case WlanNotificationCodeAcm.ScanFail:
@@ -134,8 +134,7 @@ namespace SimpleWifi.Win32
 		                    {
 		                        WlanReasonCode reasonCode = (WlanReasonCode) reasonInt;
 
-		                        if (wlanIface != null)
-		                            wlanIface.OnWlanReason(notifyData, reasonCode);
+		                        wlanIface?.OnWlanReason(notifyData, reasonCode);
 		                    }
 		                }
 
@@ -205,8 +204,7 @@ namespace SimpleWifi.Win32
 						listIterator += Marshal.SizeOf(info);
 						currentIfaceGuids.Add(info.interfaceGuid);
 
-						WlanInterface wlanIface;
-						wlanIface = _ifaces.ContainsKey(info.interfaceGuid) ? _ifaces[info.interfaceGuid] : new WlanInterface(this, info);
+						WlanInterface wlanIface = _ifaces.ContainsKey(info.interfaceGuid) ? _ifaces[info.interfaceGuid] : new WlanInterface(this, info);
 
 						interfaces[i] = wlanIface;
 						_ifaces[info.interfaceGuid] = wlanIface;

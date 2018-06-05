@@ -106,25 +106,25 @@ namespace SimpleWifi
 	            {
 	                if (Encoding.ASCII.GetString(network.dot11Ssid.SSID, 0, (int) network.dot11Ssid.SSIDLength) !=
 	                    SsidName) continue;
-	                AccessPoint accessPoint = new AccessPoint(wlanIface, network);
+                    AccessPoint accessPoint = new AccessPoint(wlanIface, network);
 	                return accessPoint;
 	            }
             }
 	        return null;
         }
 
-        /// <summary>
-        /// Returns a list over all available access points from specified wlaninterface.
-        /// </summary>
-        /// <param name="wlanIface"></param>
-        /// <returns></returns>
+	    /// <summary>
+	    /// Returns a list over all available access points from specified wlaninterface.
+	    /// </summary>
+	    /// <param name="wlanIface"></param>
+	    /// <returns></returns>
 	    public List<AccessPoint> GetAccessPoints(WlanInterface wlanIface)
 	    {
 	        List<AccessPoint> accessPoints = new List<AccessPoint>();
 	        if (_client.NoWifiAvailable)
 	            return accessPoints;
 
-	        WlanAvailableNetwork[] rawNetworks = wlanIface.GetAvailableNetworkList(0);
+	        WlanAvailableNetwork[] rawNetworks = wlanIface.GetAvailableNetworkList();
 	        List<WlanAvailableNetwork> networks = new List<WlanAvailableNetwork>();
 
 	        // Remove network entries without profile name if one exist with a profile name.
@@ -148,42 +148,72 @@ namespace SimpleWifi
 	    }
 
 	    /// <summary>
-        /// Returns a list over all available access points
+	    /// Returns a list over all available access points
+	    /// </summary>
+	    public List<AccessPoint> GetAccessPoints()
+	    {
+	        List<AccessPoint> accessPoints = new List<AccessPoint>();
+	        if (_client.NoWifiAvailable)
+	            return accessPoints;
+
+	        foreach (WlanInterface wlanIface in _client.Interfaces)
+	        {
+	            WlanAvailableNetwork[] rawNetworks = wlanIface.GetAvailableNetworkList();
+	            List<WlanAvailableNetwork> networks = new List<WlanAvailableNetwork>();
+
+	            // Remove network entries without profile name if one exist with a profile name.
+	            foreach (WlanAvailableNetwork network in rawNetworks)
+	            {
+	                bool hasProfileName = !string.IsNullOrEmpty(network.profileName);
+	                bool anotherInstanceWithProfileExists = rawNetworks.Any(n => n.Equals(network) && !string.IsNullOrEmpty(n.profileName));
+
+	                if (!anotherInstanceWithProfileExists || hasProfileName)
+	                    networks.Add(network);
+	            }
+
+	            foreach (WlanAvailableNetwork network in networks)
+	            {
+	                accessPoints.Add(new AccessPoint(wlanIface, network));
+	            }
+	        }
+
+	        return accessPoints;
+	    }
+
+	    /// <summary>
+	    /// For Test
+	    /// Returns a list over all available access points
+	    /// </summary>
+	    public IEnumerable<AccessPoint> GetAccessPointsEnumberable()
+	    {
+	        if (_client.NoWifiAvailable) yield break;
+	        foreach (WlanInterface wlanIface in _client.Interfaces)
+	        {
+	            IEnumerable<WlanAvailableNetwork> rawNetworks = wlanIface.GetAvailableNetworkList();
+	            List<WlanAvailableNetwork> networks = new List<WlanAvailableNetwork>();
+
+	            // Remove network entries without profile name if one exist with a profile name.
+	            foreach (WlanAvailableNetwork network in rawNetworks)
+	            {
+	                bool hasProfileName = !string.IsNullOrEmpty(network.profileName);
+	                bool anotherInstanceWithProfileExists =
+	                    rawNetworks.Any(n => n.Equals(network) && !string.IsNullOrEmpty(n.profileName));
+
+	                if (!anotherInstanceWithProfileExists || hasProfileName)
+	                    networks.Add(network);
+	            }
+
+	            foreach (WlanAvailableNetwork network in networks)
+	            {
+	                yield return new AccessPoint(wlanIface, network);
+	            }
+	        }
+	    }
+
+        /// <summary>
+        /// Disconnect all wifi interfaces
         /// </summary>
-        public List<AccessPoint> GetAccessPoints()
-		{
-            List<AccessPoint> accessPoints = new List<AccessPoint>();
-            if (_client.NoWifiAvailable)
-                return accessPoints;
-			
-			foreach (WlanInterface wlanIface in _client.Interfaces)
-			{
-				WlanAvailableNetwork[] rawNetworks = wlanIface.GetAvailableNetworkList(0);
-				List<WlanAvailableNetwork> networks = new List<WlanAvailableNetwork>();
-
-				// Remove network entries without profile name if one exist with a profile name.
-				foreach (WlanAvailableNetwork network in rawNetworks)
-				{
-					bool hasProfileName						= !string.IsNullOrEmpty(network.profileName);
-					bool anotherInstanceWithProfileExists	= rawNetworks.Any(n => n.Equals(network) && !string.IsNullOrEmpty(n.profileName));
-
-					if (!anotherInstanceWithProfileExists || hasProfileName)
-						networks.Add(network);
-				}
-
-				foreach (WlanAvailableNetwork network in networks)
-				{
-					accessPoints.Add(new AccessPoint(wlanIface, network));
-				}
-			}
-
-			return accessPoints;
-		}
-
-		/// <summary>
-		/// Disconnect all wifi interfaces
-		/// </summary>
-		public void Disconnect()
+        public void Disconnect()
         {
             if (_client.NoWifiAvailable)
                 return;

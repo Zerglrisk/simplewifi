@@ -24,10 +24,14 @@ namespace SimpleWifi.Win32.Interop
 		public uint index;
 	}
 
-	/// <summary>
-	/// Contains information about an available wireless network.
-	/// </summary>
-	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    /// <summary>
+    /// Contains information about an available wireless network.
+    /// </summary>
+    /// /// <remarks>
+    /// Corresponds to the native <c>WLAN_AVAILABLE_NETWORK</c> type.
+    /// </remarks>
+    /// <see href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms707403(v=vs.85).aspx"/>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
 	public struct WlanAvailableNetwork
 	{
 		/// <summary>
@@ -121,15 +125,68 @@ namespace SimpleWifi.Win32.Interop
 			return this.dot11Ssid.SSIDLength == network.dot11Ssid.SSIDLength 
 				&& this.dot11Ssid.SSID.SequenceEqual(network.dot11Ssid.SSID);
 		}
-	}
 
-	/// <summary>
-	/// Contains information provided when registering for notifications.
-	/// </summary>
-	/// <remarks>
-	/// Corresponds to the native <c>WLAN_NOTIFICATION_DATA</c> type.
-	/// </remarks>
-	[StructLayout(LayoutKind.Sequential)]
+        #region Read-only properties
+        public string Dot11DefaultAuthAlgorithmToSTring
+        {
+            get
+            {
+                switch (this.dot11DefaultAuthAlgorithm)
+                {
+                    case Dot11AuthAlgorithm.IEEE80211_Open:
+                        return "Open";
+                    case Dot11AuthAlgorithm.IEEE80211_SharedKey:
+                        return "Shared";
+                    case Dot11AuthAlgorithm.RSNA:
+                        return "WPA2-Enterprise";
+                    case Dot11AuthAlgorithm.RSNA_PSK:
+                        return "WPA2-Personal";
+                    case Dot11AuthAlgorithm.WPA:
+                        return "WPA-Enterprise";
+                    case Dot11AuthAlgorithm.WPA_None:
+                        return "WPA-None";
+                    case Dot11AuthAlgorithm.WPA_PSK:
+                        return "WPA-Personal";
+                    default:
+                        return "Own";
+                }
+            }
+        }
+        public string Dot11DefaultCipherAlgorithmToString
+        {
+            get
+            {
+                switch (this.dot11DefaultCipherAlgorithm)
+                {
+                    case Dot11CipherAlgorithm.CCMP:
+                        return "AES";
+                    case Dot11CipherAlgorithm.None:
+                        return "None";
+                    case Dot11CipherAlgorithm.TKIP:
+                        return "TKIP";
+                    case Dot11CipherAlgorithm.WEP:
+                        return "WEP";
+                    case Dot11CipherAlgorithm.WEP104:
+                        return "WEP104";
+                    case Dot11CipherAlgorithm.WEP40:
+                        return "WEP40";
+                    case Dot11CipherAlgorithm.WPA_UseGroup: //include RSN_UseGroup
+                        return "Group";
+                    default:
+                        return "Own";
+                }
+            }
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// Contains information provided when registering for notifications.
+    /// </summary>
+    /// <remarks>
+    /// Corresponds to the native <c>WLAN_NOTIFICATION_DATA</c> type.
+    /// </remarks>
+    [StructLayout(LayoutKind.Sequential)]
 	public struct WlanNotificationData
 	{
 		/// <summary>
@@ -163,12 +220,15 @@ namespace SimpleWifi.Win32.Interop
 		{
 			get
 			{
-				if (notificationSource == WlanNotificationSource.MSM)
-					return (WlanNotificationCodeMsm)notificationCode;
-				else if (notificationSource == WlanNotificationSource.ACM)
-					return (WlanNotificationCodeAcm)notificationCode;
-				else
-					return notificationCode;
+			    switch (notificationSource)
+			    {
+			        case WlanNotificationSource.MSM:
+			            return (WlanNotificationCodeMsm)notificationCode;
+			        case WlanNotificationSource.ACM:
+			            return (WlanNotificationCodeAcm)notificationCode;
+			        default:
+			            return notificationCode;
+			    }
 			}
 
 		}
@@ -313,12 +373,76 @@ namespace SimpleWifi.Win32.Interop
 		/// Size of the IE data blob, in bytes.
 		/// </summary>
 		public uint ieSize;
-	}
 
-	/// <summary>
-	/// Contains the set of supported data rates.
-	/// </summary>
-	[StructLayout(LayoutKind.Sequential)]
+
+        #region Read-only properties
+	    /// <summary>
+	    /// Gets the BSSID of the associated access point.
+	    /// </summary>
+	    /// <value>The BSSID.</value>
+	    public PhysicalAddress Dot11Bssid => new PhysicalAddress(dot11Bssid);
+
+	    public string MacAddress => BitConverter.ToString(this.dot11Bssid);
+
+	    public int Channel
+        {
+            get
+            {
+                if (this.dot11BssPhyType != Dot11PhyType.VHT)
+                {
+                    int tmpval1 = (Convert.ToInt32(chCenterFrequency) % 2412000) / 1000;
+
+                    int tmpval2 = tmpval1 / 5;
+
+                    return tmpval2 + 1;
+                }
+                else
+                {
+                    int tmpval1 = (Convert.ToInt32(chCenterFrequency) % 5000000) / 1000;
+
+                    int tmpval2 = tmpval1 / 5;
+
+                    return tmpval2;
+                }
+            }
+        }
+        public string RadioType
+        {
+            get
+            {
+                switch (this.dot11BssPhyType)
+                {
+                    case Dot11PhyType.Any: //Include Unknown
+                        return "Any";
+                    case Dot11PhyType.FHSS:
+                        return "FHSS";
+                    case Dot11PhyType.DSSS:
+                        return "DSSS";
+                    case Dot11PhyType.IrBaseband:
+                        return "IR Baseband";
+                    case Dot11PhyType.OFDM:
+                        return "802.11a";
+                    case Dot11PhyType.HRDSSS:
+                        return "HRDSSS";
+                    case Dot11PhyType.ERP:
+                        return "802.11g";
+                    case Dot11PhyType.HT:
+                        return "802.11n";
+                    case Dot11PhyType.VHT:
+                        return "802.11ac";
+                    default:
+                        return "Own";
+                }
+
+            }
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// Contains the set of supported data rates.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
 	public struct WlanRateSet
 	{
 		/// <summary>
@@ -352,7 +476,16 @@ namespace SimpleWifi.Win32.Interop
 		{
 			return (rateSet[rate] & 0x7FFF) * 0.5;
 		}
-	}
+	    public List<double> GetRateInMbpsList()
+	    {
+	        List<double> list = new List<double>();
+	        for (int i = 0; i < this.rateSetLength; i++)
+	        {
+	            list.Add((rateSet[i] & 0x7FFF) * 0.5);
+	        }
+	        return list;
+	    }
+    }
 
 
 	/// <summary>
@@ -466,10 +599,7 @@ namespace SimpleWifi.Win32.Interop
 		/// Gets the BSSID of the associated access point.
 		/// </summary>
 		/// <value>The BSSID.</value>
-		public PhysicalAddress Dot11Bssid
-		{
-			get { return new PhysicalAddress(dot11Bssid); }
-		}
+		public PhysicalAddress Dot11Bssid => new PhysicalAddress(dot11Bssid);
 	}
 
 	/// <summary>
@@ -588,7 +718,7 @@ namespace SimpleWifi.Win32.Interop
 		public WlanProfileFlags profileFlags;
 	}
 
-	/*
+    /*
 	/// <summary>
 	/// The EAP_METHOD_TYPE structure contains type, identification, and author information about an EAP method.
 	/// </summary>
@@ -609,4 +739,101 @@ namespace SimpleWifi.Win32.Interop
 		public uint dwVendorId;		// The vendor ID for the EAP method.
 		public uint dwVendorType;	// The numeric type code for the vendor of this EAP method.
 	}*/
+
+    /// <summary>
+    /// Specifies the radio state on a specific physical layer (PHY) type.
+    /// </summary>
+    /// <remarks>
+    /// Corresponds to the native <c>WLAN_PHY_RADIO_STATE</c> type.
+    /// </remarks>
+    /// <see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/ms706918(v=vs.85).aspx"/>
+    public struct WlanPhyRadioState
+    {
+        /// <summary>
+        /// The index of the PHY type on which the radio state is being set or queried. The WlanGetInterfaceCapability function returns a list of valid PHY types.
+        /// </summary>
+        public uint PhyIndex;
+        /// <summary>
+        /// A DOT11_RADIO_STATE value that indicates the software radio state.
+        /// </summary>
+        public Dot11RadioState Dot11SoftwareRadioState;
+        /// <summary>
+        /// A DOT11_RADIO_STATE value that indicates the hardware radio state.
+        /// </summary>
+        public Dot11RadioState Dot11HardwareRadioState;
+    }
+
+    /// <summary>
+    /// Specifies the radio state on a list of physical layer (PHY) types.
+    /// </summary>
+    /// <remarks>
+    /// Corresponds to the native <c>WLAN_RADIO_STATE</c> type.
+    /// </remarks>
+    /// <see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/ms707392(v=vs.85).aspx"/>
+    public struct WlanRadioState
+    {
+        /// <summary>
+        /// The number of valid PHY indices in the PhyRadioState member.
+        /// </summary>
+        public uint NumberOfPhys;
+        /// <summary>
+        /// An array of WLAN_PHY_RADIO_STATE structures that specify the radio states of a number of PHY indices. Only the first dwNumberOfPhys entries in this array are valid.
+        /// </summary>
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+        public WlanPhyRadioState[] PhyRadioState;
+    }
+
+    /* It Dosen't Used
+     *  it used into WlanBssEntry And WlanAssociationAttributes already
+     * 
+    /// <summary>
+    /// Used to define an IEEE media access control (MAC) address.
+    /// </summary>
+    /// /// <remarks>
+    /// Corresponds to the native <c>DOT11_MAC_ADDRESS</c> type.
+    /// </remarks>
+    /// <see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/bb427397(v=vs.85).aspx"/>
+    public struct Dot11MacAddress
+    {
+        /// <summary>
+        /// A MAC address in unicast, multicast, or broadcast format.
+        /// </summary>
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
+        public byte[] MacAddress;
+    }
+    */
+
+    #region Cryptography API
+
+    /// <summary>
+    /// The CRYPT_INTEGER_BLOB structure contains an arbitrary array of bytes. The structure definition includes aliases appropriate to the various functions that use it.
+    /// </summary>
+    /// <remarks>
+    /// Corresponds to the native <c>CRYPT_INTEGER_BLOB</c> type.
+    /// </remarks>
+    /// <see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/aa381414(v=vs.85).aspx"/>
+    /// <seealso cref="https://www.pinvoke.net/default.aspx/Structures/DATA_BLOB.html"/>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct CryptoapiBlob
+    {
+        public int cbData; //dword
+        public IntPtr pbData; //byte
+    }
+    /// <summary>
+    /// The CRYPTPROTECT_PROMPTSTRUCT structure provides the text of a prompt and information about when and where that prompt is to be displayed when using the CryptProtectData and CryptUnprotectData functions.
+    /// </summary>
+    /// <remarks>
+    /// Corresponds to the native <c>CRYPTPROTECT_PROMPTSTRUCT</c> type.
+    /// </remarks>
+    /// <see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/aa380263(v=vs.85).aspx"/>
+    /// <seealso cref="https://www.pinvoke.net/default.aspx/Structures/CRYPTPROTECT_PROMPTSTRUCT.html"/>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct CryptprotectPromptstruct
+    {
+        public int cbSize; //Dword
+        public CryptProtectPromptFlags promptFlags; //dword
+        public IntPtr app; //hwnd
+        public string prompt; //lpcwstr
+    }
+    #endregion
 }

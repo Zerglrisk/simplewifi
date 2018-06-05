@@ -138,12 +138,13 @@ namespace SimpleWifi.Win32
 				SetInterfaceInt(WlanIntfOpcode.BssType, (int)value);
 			}
 		}
+	    public WlanRadioState RadioState => GetRadioState();
 
-		/// <summary>
-		/// Gets the state of the interface.
-		/// </summary>
-		/// <value>The state of the interface.</value>
-		public WlanInterfaceState InterfaceState => (WlanInterfaceState)GetInterfaceInt(WlanIntfOpcode.InterfaceState);
+	    /// <summary>
+        /// Gets the state of the interface.
+        /// </summary>
+        /// <value>The state of the interface.</value>
+        public WlanInterfaceState InterfaceState => (WlanInterfaceState)GetInterfaceInt(WlanIntfOpcode.InterfaceState);
 
 	    /// <summary>
 		/// Gets the channel.
@@ -224,12 +225,16 @@ namespace SimpleWifi.Win32
 			return availNets;
 		}
 
-		/// <summary>
-		/// Retrieves the list of available networks.
-		/// </summary>
-		/// <param name="flags">Controls the type of networks returned.</param>
-		/// <returns>A list of the available networks.</returns>
-		public WlanAvailableNetwork[] GetAvailableNetworkList(WlanGetAvailableNetworkFlags flags)
+	    public WlanAvailableNetwork[] GetAvailableNetworkList()
+	    {
+	        return GetAvailableNetworkList(0);
+	    }
+        /// <summary>
+        /// Retrieves the list of available networks.
+        /// </summary>
+        /// <param name="flags">Controls the type of networks returned.</param>
+        /// <returns>A list of the available networks.</returns>
+        public WlanAvailableNetwork[] GetAvailableNetworkList(WlanGetAvailableNetworkFlags flags)
 		{
 			IntPtr availNetListPtr;
 			WlanInterop.ThrowIfError(WlanInterop.WlanGetAvailableNetworkList(_client.ClientHandle, _info.interfaceGuid, flags, IntPtr.Zero, out availNetListPtr));
@@ -286,7 +291,7 @@ namespace SimpleWifi.Win32
 		/// <param name="ssid">Specifies the SSID of the network from which the BSS list is requested.</param>
 		/// <param name="bssType">Indicates the BSS type of the network.</param>
 		/// <param name="securityEnabled">Indicates whether security is enabled on the network.</param>
-		public WlanBssEntry[] GetNetworkBssList(Dot11Ssid ssid, Dot11BssType bssType, bool securityEnabled)
+		public WlanBssEntry[] GetNetworkBssList(Dot11Ssid ssid, Dot11BssType bssType)
 		{
 			IntPtr ssidPtr = Marshal.AllocHGlobal(Marshal.SizeOf(ssid));
 			Marshal.StructureToPtr(ssid, ssidPtr, false);
@@ -294,7 +299,7 @@ namespace SimpleWifi.Win32
 			try
 			{
 				IntPtr bssListPtr;
-				WlanInterop.ThrowIfError(WlanInterop.WlanGetNetworkBssList(_client.ClientHandle, _info.interfaceGuid, ssidPtr, bssType, securityEnabled, IntPtr.Zero, out bssListPtr));
+				WlanInterop.ThrowIfError(WlanInterop.WlanGetNetworkBssList(_client.ClientHandle, _info.interfaceGuid, ssidPtr, bssType, true, IntPtr.Zero, out bssListPtr));
 
 				try
 				{
@@ -363,22 +368,20 @@ namespace SimpleWifi.Win32
 						while (_eventQueue.Count != 0)
 						{
 							object e = _eventQueue.Dequeue();
-							if (e is WlanConnectionNotificationEventData)
-							{
-								WlanConnectionNotificationEventData wlanConnectionData = (WlanConnectionNotificationEventData)e;
-								// Check if the conditions are good to indicate either success or failure.
-								if (wlanConnectionData.NotifyData.notificationSource == WlanNotificationSource.MSM)
-								{
-									switch ((WlanNotificationCodeMsm)wlanConnectionData.NotifyData.notificationCode)
-									{
-										case WlanNotificationCodeMsm.Connected:										
-											if (wlanConnectionData.ConnNotifyData.profileName == profile)
-												return true;
-											break;
-									}
-								}
-								break;
-							}
+						    if (!(e is WlanConnectionNotificationEventData)) continue;
+						    WlanConnectionNotificationEventData wlanConnectionData = (WlanConnectionNotificationEventData)e;
+						    // Check if the conditions are good to indicate either success or failure.
+						    if (wlanConnectionData.NotifyData.notificationSource == WlanNotificationSource.MSM)
+						    {
+						        switch ((WlanNotificationCodeMsm)wlanConnectionData.NotifyData.notificationCode)
+						        {
+						            case WlanNotificationCodeMsm.Connected:										
+						                if (wlanConnectionData.ConnNotifyData.profileName == profile)
+						                    return true;
+						                break;
+						        }
+						    }
+						    break;
 						}
 					}
 				}
@@ -448,18 +451,20 @@ namespace SimpleWifi.Win32
 			WlanInterop.ThrowIfError(WlanInterop.WlanSetProfileEapXmlUserData(_client.ClientHandle, _info.interfaceGuid, profileName, SetEapUserDataMode.None, userXML, IntPtr.Zero));
 		}
 
-		/// <summary>
-		/// Gets the profile's XML specification.
-		/// </summary>
-		/// <param name="profileName">The name of the profile.</param>
-		/// <returns>The XML document.</returns>
-		public string GetProfileXml(string profileName)
+	    /// <summary>
+	    /// Gets the profile's XML specification.
+	    /// </summary>
+	    /// <param name="profileName">The name of the profile.</param>
+	    /// <param name="isProtected">If True KeyMaterial Will show crypted(It can be use after windows 7)</param>
+	    /// <returns>The XML document.</returns>
+	    public string GetProfileXml(string profileName, bool isProtected)
 		{
 			IntPtr profileXmlPtr;
-			WlanProfileFlags flags;
+            //It Only Work After Windows 7 (GetPlaintextKey)
+			WlanProfileFlags flags = isProtected ? WlanProfileFlags.AllUser : WlanProfileFlags.GetPlaintextKey;
 			WlanAccess access;
 
-			WlanInterop.ThrowIfError(WlanInterop.WlanGetProfile(_client.ClientHandle, _info.interfaceGuid, profileName, IntPtr.Zero, out profileXmlPtr, out flags, out access));
+			WlanInterop.ThrowIfError(WlanInterop.WlanGetProfile(_client.ClientHandle, _info.interfaceGuid, profileName, IntPtr.Zero, out profileXmlPtr, ref flags, out access));
 
 			try
 			{
@@ -599,5 +604,53 @@ namespace SimpleWifi.Win32
 				WlanInterop.WlanFreeMemory(valuePtr);
 			}
 		}
-	}
+
+	    /// <summary>
+	    /// Get Radio State
+	    /// </summary>
+	    /// <returns>Radio State</returns>
+	    internal WlanRadioState GetRadioState()
+	    {
+	        IntPtr valuePtr;
+	        int valueSize;
+	        WlanOpcodeValueType opcodeValueType;
+
+	        WlanInterop.ThrowIfError(WlanInterop.WlanQueryInterface(_client.ClientHandle, _info.interfaceGuid, WlanIntfOpcode.RadioState, IntPtr.Zero, out valueSize, out valuePtr, out opcodeValueType));
+
+	        try
+	        {
+	            return (WlanRadioState)Marshal.PtrToStructure(valuePtr, typeof(WlanRadioState));
+	        }
+	        finally
+	        {
+	            WlanInterop.WlanFreeMemory(valuePtr);
+	        }
+	    }
+
+
+        //It Will Change throwiferror to this.
+        private string GetErrorMessage(int errorCode)
+	    {
+	        int FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100;
+	        int FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200;
+	        int FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000;
+	        int messageSize = 255;
+	        String lpMsgBuf = "";
+	        int dwFlags = FORMAT_MESSAGE_ALLOCATE_BUFFER |
+	                      FORMAT_MESSAGE_FROM_SYSTEM |
+	                      FORMAT_MESSAGE_IGNORE_INSERTS;
+	        IntPtr ptrlpSource = new IntPtr();
+	        IntPtr prtArguments = new IntPtr();
+	        int retVal = WlanInterop.FormatMessage(dwFlags, ref ptrlpSource, errorCode, 0,
+	            ref lpMsgBuf, messageSize,
+	            ref prtArguments);
+	        if (0 == retVal)
+	        {
+	            throw new Exception("Failed to format message for error code " +
+	                                errorCode + ". ");
+	        }
+	        return lpMsgBuf;
+	    }
+
+    }
 }

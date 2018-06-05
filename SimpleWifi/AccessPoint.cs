@@ -13,13 +13,29 @@ namespace SimpleWifi
 	public class AccessPoint
 	{
 	    internal AccessPoint(WlanInterface interfac, WlanAvailableNetwork network)
-		{
-			Interface = interfac;
-			Network = network;
-		}
+	    {
+	        Interface = interfac;
+	        Network = network;
 
-		public string Name => Encoding.UTF8.GetString(Network.dot11Ssid.SSID, 0, (int)Network.dot11Ssid.SSIDLength);
+	        //For WIndows 7
+	        //If XP Return ERROR_NOT_SUPPORTED
+	        //The request is not supported.This error is returned if this function was called from a Windows XP with SP3 or Wireless LAN API for Windows XP with SP2 client.This error is also returned if the WLAN AutoConfig service is disabled.
+	        Bssids = Interface.GetNetworkBssList(Network.dot11Ssid, Network.dot11BssType).ToList();
+	    }
 
+	    public string Name => Encoding.UTF8.GetString(Network.dot11Ssid.SSID, 0, (int)Network.dot11Ssid.SSIDLength);
+
+	    public string Authentication => Network.Dot11DefaultAuthAlgorithmToSTring;
+	    public string Encryption => Network.Dot11DefaultCipherAlgorithmToString;
+	    public string Hex => BitConverter.ToString(Encoding.Default.GetBytes(this.Name)).Replace("-", "");
+	    public string NetworkType => Network.dot11BssType.ToString();
+        /// <summary>
+        /// It Support For WIndows 7
+        /// </summary>
+	    public List<WlanBssEntry> Bssids { get; } // => Interface.GetNetworkBssList(Network.dot11Ssid, Network.dot11BssType).ToList();
+        /// <summary>
+        /// It support For Xp
+        /// </summary>
 	    public uint SignalStrength => Network.wlanSignalQuality;
 
 	    /// <summary>
@@ -31,7 +47,8 @@ namespace SimpleWifi
 			{
 				try
 				{
-					return Interface.GetProfiles().Any(p => p.profileName == Name);
+					return (Network.flags & WlanAvailableNetworkFlags.HasProfile) != 0;
+				    //Not Use: Interface.GetProfiles().Any(p => p.profileName == Name);
 				}
 				catch 
 				{ 
@@ -48,9 +65,11 @@ namespace SimpleWifi
 			{
 				try
 				{
-					var a = Interface.CurrentConnection; // This prop throws exception if not connected, which forces me to this try catch. Refactor plix.
-					return a.profileName == Network.profileName;
-				}
+				    return (Network.flags & WlanAvailableNetworkFlags.Connected) != 0;
+                    //Not Use
+                    //var a = Interface.CurrentConnection; // This prop throws exception if not connected, which forces me to this try catch. Refactor plix.
+                    //return a.profileName == Network.profileName;
+                }
 				catch
 				{
 					return false;
@@ -70,6 +89,15 @@ namespace SimpleWifi
 		/// </summary>
 		internal WlanInterface Interface { get; }
 
+        /// <summary>
+        /// Not Use For now
+        /// </summary>
+        /// <param name="security"></param>
+	    public void SetSecurity(bool security)
+	    {
+	        var wlanAvailableNetwork = Network;
+	        wlanAvailableNetwork.securityEnabled = security;
+	    }
 	    /// <summary>
 		/// Checks that the password format matches this access point's encryption method.
 		/// </summary>
@@ -123,9 +151,9 @@ namespace SimpleWifi
 			}));
 		}
 				
-		public string GetProfileXML()
+		public string GetProfileXML(bool isProtected = true)
 		{
-		    return HasProfile ? Interface.GetProfileXml(Name) : string.Empty;
+		    return HasProfile ? Interface.GetProfileXml(Name, isProtected) : string.Empty;
 		}
 
 		public void DeleteProfile()

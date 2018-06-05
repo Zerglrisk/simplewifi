@@ -29,7 +29,38 @@ namespace SimpleWifi
 			foreach (var inte in _client.Interfaces)
 				inte.WlanNotification += inte_WlanNotification;
 		}
-		
+
+	    public AccessPoint GetAccessPoint(string SsidName)
+	    {
+	        AccessPoint accessPoint = null;
+	        if (_client.NoWifiAvailable)
+	            return accessPoint;
+
+	        foreach (WlanInterface wlanIface in _client.Interfaces)
+	        {
+	            WlanAvailableNetwork[] rawNetworks = wlanIface.GetAvailableNetworkList();
+	            List<WlanAvailableNetwork> networks = new List<WlanAvailableNetwork>();
+
+	            // Remove network entries without profile name if one exist with a profile name.
+	            foreach (WlanAvailableNetwork network in rawNetworks)
+	            {
+	                bool hasProfileName = !string.IsNullOrEmpty(network.profileName);
+	                bool anotherInstanceWithProfileExists = rawNetworks.Any(n => n.Equals(network) && !string.IsNullOrEmpty(n.profileName));
+
+	                if (!anotherInstanceWithProfileExists || hasProfileName)
+	                    networks.Add(network);
+	            }
+
+	            foreach (WlanAvailableNetwork network in networks)
+	            {
+	                if (Encoding.ASCII.GetString(network.dot11Ssid.SSID, 0, (int) network.dot11Ssid.SSIDLength) !=
+	                    SsidName) continue;
+	                accessPoint = new AccessPoint(wlanIface, network);
+	                return accessPoint;
+	            }
+            }
+	        return accessPoint;
+        }
 		/// <summary>
 		/// Returns a list over all available access points
 		/// </summary>

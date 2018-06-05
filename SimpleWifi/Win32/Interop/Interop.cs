@@ -107,7 +107,7 @@ namespace SimpleWifi.Win32.Interop
 			[In, MarshalAs(UnmanagedType.LPWStr)] string profileName,
 			[In] IntPtr pReserved,
 			[Out] out IntPtr profileXml,
-			[Out, Optional] out WlanProfileFlags flags,
+			[In, Out, Optional] ref WlanProfileFlags flags,
 			[Out, Optional] out WlanAccess grantedAccess);
 
 		[DllImport("wlanapi.dll")]
@@ -165,11 +165,23 @@ namespace SimpleWifi.Win32.Interop
 			[In, MarshalAs(UnmanagedType.LPStruct)] Guid interfaceGuid,
 			IntPtr pReserved);
 
-		[DllImport("wlanapi.dll")]
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="clientHandle">The client's session handle, obtained by a previous call to the WlanOpenHandle function.</param>
+        /// <param name="interfaceGuid">A pointer to the GUID of the wireless LAN interface to be queried.</param>
+        /// <param name="dot11Ssid">if use, the dot11BssType parameter must be set to either dot11_BSS_type_infrastructure or dot11_BSS_type_independent and the bSecurityEnabled parameter must be specified.</param>
+        /// <param name="dot11BssType">The BSS type of the network. This parameter is ignored if the SSID of the network for the BSS list is unspecified (the pDot11Ssid parameter is NULL).</param>
+        /// <param name="securityEnabled">A value that indicates whether security is enabled on the network. This parameter is only valid when the SSID of the network for the BSS list is specified (the pDot11Ssid parameter is not NULL).</param>
+        /// <param name="reservedPtr">Reserved for future use. This parameter must be set to NULL.</param>
+        /// <param name="wlanBssList">A pointer to storage for a pointer to receive the returned list of of BSS entries in a WLAN_BSS_LIST structure.</param>
+        /// <returns></returns>
+        /// <see href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms706735(v=vs.85).aspx"/>
+        [DllImport("wlanapi.dll")]
 		public static extern int WlanGetNetworkBssList(
 			[In] IntPtr clientHandle,
 			[In, MarshalAs(UnmanagedType.LPStruct)] Guid interfaceGuid,
-			[In] IntPtr dot11SsidInt,
+			[In] IntPtr dot11Ssid,
 			[In] Dot11BssType dot11BssType,
 			[In] bool securityEnabled,
 			IntPtr reservedPtr,
@@ -223,18 +235,90 @@ namespace SimpleWifi.Win32.Interop
 			IntPtr reservedPtr
 		);
 
-		#endregion
+        #endregion
 
-		/// <summary>
-		/// Helper method to wrap calls to Native WiFi API methods.
-		/// If the method falls, throws an exception containing the error code.
-		/// </summary>
-		/// <param name="win32ErrorCode">The error code.</param>
-		[DebuggerStepThrough]
+        #region Cryptography API
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="DataIn"></param>
+        /// <param name="pszDataDescr"></param>
+        /// <param name="optionalEntropy"></param>
+        /// <param name="pReserved">This parameter is reserved for future use and must be set to NULL.</param>
+        /// <param name="promptStruct"></param>
+        /// <param name="flags"></param>
+        /// <param name="dataOut"></param>
+        /// <returns></returns>
+        /// <see cref="https://msdn.microsoft.com/ko-kr/library/windows/desktop/aa380882(v=vs.85).aspx"/>
+        /// <seealso cref="https://www.pinvoke.net/default.aspx/crypt32/CryptUnprotectData.html"/>
+        /// <returns>succeeds return true, fails return false.</returns>
+        [DllImport("crypt32.dll",
+            SetLastError = true,
+            CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        public static extern bool CryptUnprotectData(
+            ref CryptoapiBlob pCipherText,
+            ref string pszDescription,
+            ref CryptoapiBlob pEntropy,
+            IntPtr pReserved,
+            ref CryptprotectPromptstruct pPrompt,
+            int dwFlags,
+            ref CryptoapiBlob pPlainText);
+        //[In] ref CryptoapiBlob DataIn, //DATA_BLOB
+        //[Out, Optional] out string pszDataDescr, //lpwstr
+        //[In, Optional] ref CryptoapiBlob optionalEntropy, //DATA_BLOB
+        //IntPtr pReserved, //pvoid
+        //[In, Optional] ref CryptprotectPromptstruct promptStruct, //CRYPTPROTECT_PROMPTSTRUCT 
+        //[In] CryptProtectFlags flags, //dword
+        //[Out] out CryptoapiBlob dataOut); //DATA_BLOB
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="pszString"></param>
+        /// <param name="cchString"></param>
+        /// <param name="dwFlags"></param>
+        /// <param name="pbBinary"></param>
+        /// <param name="pcbBinary"></param>
+        /// <param name="pdwSkip"></param>
+        /// <param name="pdwFlags"></param>
+        /// <returns></returns>
+        /// <see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/aa380285(v=vs.85).aspx"/>
+        /// <seealso cref="https://www.pinvoke.net/default.aspx/crypt32/CryptStringToBinary.html"/>
+        [DllImport("crypt32.dll",
+            SetLastError = true,
+            CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        public static extern bool CryptStringToBinary(
+                [In] string pszString,
+                [In] uint cchString,
+                [In] CryptStringFlags dwFlags,
+                [Out] IntPtr pbBinary,
+                [In, Out] ref uint pcbBinary,
+                [Out] out uint pdwSkip,
+                [Out] out CryptStringFlags pdwFlags);
+
+        #endregion
+
+        /// <summary>
+        /// Helper method to wrap calls to Native WiFi API methods.
+        /// If the method falls, throws an exception containing the error code.
+        /// </summary>
+        /// <param name="win32ErrorCode">The error code.</param>
+        [DebuggerStepThrough]
 		internal static void ThrowIfError(int win32ErrorCode)
 		{
 			if (win32ErrorCode != 0)
 				throw new Win32Exception(win32ErrorCode);
 		}
-	}
+
+	    [DllImport("kernel32.dll",
+	        CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+	    internal static extern int FormatMessage(int dwFlags,
+	        ref IntPtr lpSource,
+	        int dwMessageId,
+	        int dwLanguageId,
+	        ref String lpBuffer,
+	        int nSize,
+	        ref IntPtr arguments);
+    }
 }

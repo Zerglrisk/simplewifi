@@ -1,6 +1,7 @@
 ﻿using SimpleWifi.Win32.Interop;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
@@ -14,8 +15,8 @@ namespace SimpleWifi.Win32
 	/// </summary>
 	public class WlanInterface
 	{
-		private WlanClient client;
-		private WlanInterfaceInfo info;
+		private readonly WlanClient _client;
+		private readonly WlanInterfaceInfo _info;
 
 		#region Events
 		/// <summary>
@@ -53,16 +54,16 @@ namespace SimpleWifi.Win32
 		/// </summary>
 		public event WlanReasonNotificationEventHandler WlanReasonNotification;
 		
-		private bool queueEvents;
-		private AutoResetEvent eventQueueFilled = new AutoResetEvent(false);
-		private Queue<object> eventQueue = new Queue<object>();
+		private bool _queueEvents;
+		private AutoResetEvent _eventQueueFilled = new AutoResetEvent(false);
+		private Queue<object> _eventQueue = new Queue<object>();
 		#endregion
 
 		#region Properties
 		internal WlanInterface(WlanClient client, WlanInterfaceInfo info)
 		{
-			this.client = client;
-			this.info = info;
+			this._client = client;
+			this._info = info;
 		}
 
 		/// <summary>
@@ -97,7 +98,7 @@ namespace SimpleWifi.Win32
 				foreach (NetworkInterface netIface in NetworkInterface.GetAllNetworkInterfaces())
 				{
 					Guid netIfaceGuid = new Guid(netIface.Id);
-					if (netIfaceGuid.Equals(info.interfaceGuid))
+					if (netIfaceGuid.Equals(_info.interfaceGuid))
 					{
 						return netIface;
 					}
@@ -109,29 +110,20 @@ namespace SimpleWifi.Win32
 		/// <summary>
 		/// The GUID of the interface (same content as the <see cref="System.Net.NetworkInformation.NetworkInterface.Id"/> value).
 		/// </summary>
-		public Guid InterfaceGuid
-		{
-			get { return info.interfaceGuid; }
-		}
+		public Guid InterfaceGuid => _info.interfaceGuid;
 
-		/// <summary>
+	    /// <summary>
 		/// The description of the interface.
 		/// This is a user-immutable string containing the vendor and model name of the adapter.
 		/// </summary>
-		public string InterfaceDescription
-		{
-			get { return info.interfaceDescription; }
-		}
+		public string InterfaceDescription => _info.interfaceDescription;
 
-		/// <summary>
+	    /// <summary>
 		/// The friendly name given to the interface by the user (e.g. "Local Area Network Connection").
 		/// </summary>
-		public string InterfaceName
-		{
-			get { return NetworkInterface.Name; }
-		}
+		public string InterfaceName => NetworkInterface.Name;
 
-		/// <summary>
+	    /// <summary>
 		/// Gets or sets the BSS type for the indicated interface.
 		/// </summary>
 		/// <value>The type of the BSS.</value>
@@ -151,54 +143,30 @@ namespace SimpleWifi.Win32
 		/// Gets the state of the interface.
 		/// </summary>
 		/// <value>The state of the interface.</value>
-		public WlanInterfaceState InterfaceState
-		{
-			get
-			{
-				return (WlanInterfaceState)GetInterfaceInt(WlanIntfOpcode.InterfaceState);
-			}
-		}
+		public WlanInterfaceState InterfaceState => (WlanInterfaceState)GetInterfaceInt(WlanIntfOpcode.InterfaceState);
 
-		/// <summary>
+	    /// <summary>
 		/// Gets the channel.
 		/// </summary>
 		/// <value>The channel.</value>
 		/// <remarks>Not supported on Windows XP SP2.</remarks>
-		public int Channel
-		{
-			get
-			{
-				return GetInterfaceInt(WlanIntfOpcode.ChannelNumber);
-			}
-		}
+		public int Channel => GetInterfaceInt(WlanIntfOpcode.ChannelNumber);
 
-		/// <summary>
+	    /// <summary>
 		/// Gets the RSSI.
 		/// </summary>
 		/// <value>The RSSI.</value>
 		/// <remarks>Not supported on Windows XP SP2.</remarks>
-		public int RSSI
-		{
-			get
-			{
-				return GetInterfaceInt(WlanIntfOpcode.RSSI);
-			}
-		}
+		public int RSSI => GetInterfaceInt(WlanIntfOpcode.RSSI);
 
-		/// <summary>
+	    /// <summary>
 		/// Gets the current operation mode.
 		/// </summary>
 		/// <value>The current operation mode.</value>
 		/// <remarks>Not supported on Windows XP SP2.</remarks>
-		public Dot11OperationMode CurrentOperationMode
-		{
-			get
-			{
-				return (Dot11OperationMode)GetInterfaceInt(WlanIntfOpcode.CurrentOperationMode);
-			}
-		}
+		public Dot11OperationMode CurrentOperationMode => (Dot11OperationMode)GetInterfaceInt(WlanIntfOpcode.CurrentOperationMode);
 
-		/// <summary>
+	    /// <summary>
 		/// Gets the attributes of the current connection.
 		/// </summary>
 		/// <value>The current connection attributes.</value>
@@ -212,7 +180,7 @@ namespace SimpleWifi.Win32
 				WlanOpcodeValueType opcodeValueType;
 
 				// TODO: Should get result from WlanInterop.WlanQueryInterface and handle if it's 0x0000139F (not connected) gracefully
-				WlanInterop.ThrowIfError(WlanInterop.WlanQueryInterface(client.clientHandle, info.interfaceGuid, WlanIntfOpcode.CurrentConnection, IntPtr.Zero, out valueSize, out valuePtr, out opcodeValueType));
+				WlanInterop.ThrowIfError(WlanInterop.WlanQueryInterface(_client.ClientHandle, _info.interfaceGuid, WlanIntfOpcode.CurrentConnection, IntPtr.Zero, out valueSize, out valuePtr, out opcodeValueType));
 				try
 				{
 					return (WlanConnectionAttributes)Marshal.PtrToStructure(valuePtr, typeof(WlanConnectionAttributes));
@@ -234,7 +202,7 @@ namespace SimpleWifi.Win32
 		/// </remarks>
 		public void Scan()
 		{
-			WlanInterop.ThrowIfError(WlanInterop.WlanScan(client.clientHandle, info.interfaceGuid, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero));
+			WlanInterop.ThrowIfError(WlanInterop.WlanScan(_client.ClientHandle, _info.interfaceGuid, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero));
 		}
 
 		/// <summary>
@@ -264,7 +232,7 @@ namespace SimpleWifi.Win32
 		public WlanAvailableNetwork[] GetAvailableNetworkList(WlanGetAvailableNetworkFlags flags)
 		{
 			IntPtr availNetListPtr;
-			WlanInterop.ThrowIfError(WlanInterop.WlanGetAvailableNetworkList(client.clientHandle, info.interfaceGuid, flags, IntPtr.Zero, out availNetListPtr));
+			WlanInterop.ThrowIfError(WlanInterop.WlanGetAvailableNetworkList(_client.ClientHandle, _info.interfaceGuid, flags, IntPtr.Zero, out availNetListPtr));
 
 			try
 			{
@@ -300,7 +268,7 @@ namespace SimpleWifi.Win32
 		public WlanBssEntry[] GetNetworkBssList()
 		{
 			IntPtr bssListPtr;
-			WlanInterop.ThrowIfError(WlanInterop.WlanGetNetworkBssList(client.clientHandle, info.interfaceGuid, IntPtr.Zero, Dot11BssType.Any, false, IntPtr.Zero, out bssListPtr));
+			WlanInterop.ThrowIfError(WlanInterop.WlanGetNetworkBssList(_client.ClientHandle, _info.interfaceGuid, IntPtr.Zero, Dot11BssType.Any, false, IntPtr.Zero, out bssListPtr));
 
 			try
 			{
@@ -326,7 +294,7 @@ namespace SimpleWifi.Win32
 			try
 			{
 				IntPtr bssListPtr;
-				WlanInterop.ThrowIfError(WlanInterop.WlanGetNetworkBssList(client.clientHandle, info.interfaceGuid, ssidPtr, bssType, securityEnabled, IntPtr.Zero, out bssListPtr));
+				WlanInterop.ThrowIfError(WlanInterop.WlanGetNetworkBssList(_client.ClientHandle, _info.interfaceGuid, ssidPtr, bssType, securityEnabled, IntPtr.Zero, out bssListPtr));
 
 				try
 				{
@@ -349,12 +317,12 @@ namespace SimpleWifi.Win32
 		/// <param name="connectionParams">The connection paramters.</param>
 		protected void Connect(WlanConnectionParameters connectionParams)
 		{
-			WlanInterop.ThrowIfError(WlanInterop.WlanConnect(client.clientHandle, info.interfaceGuid, ref connectionParams, IntPtr.Zero));
+			WlanInterop.ThrowIfError(WlanInterop.WlanConnect(_client.ClientHandle, _info.interfaceGuid, ref connectionParams, IntPtr.Zero));
 		}
 
 		public void Disconnect()
 		{
-			WlanInterop.ThrowIfError(WlanInterop.WlanDisconnect(client.clientHandle, info.interfaceGuid, IntPtr.Zero));
+			WlanInterop.ThrowIfError(WlanInterop.WlanDisconnect(_client.ClientHandle, _info.interfaceGuid, IntPtr.Zero));
 		}
 
 		/// <summary>
@@ -384,27 +352,27 @@ namespace SimpleWifi.Win32
 		/// <returns></returns>
 		public bool ConnectSynchronously(WlanConnectionMode connectionMode, Dot11BssType bssType, string profile, int connectTimeout)
 		{
-			queueEvents = true; // NOTE: This can cause side effects, other places in the application might not get events properly.
+			_queueEvents = true; // NOTE: This can cause side effects, other places in the application might not get events properly.
 			try
 			{
 				Connect(connectionMode, bssType, profile);
-				while (queueEvents && eventQueueFilled.WaitOne(connectTimeout, true))
+				while (_queueEvents && _eventQueueFilled.WaitOne(connectTimeout, true))
 				{
-					lock (eventQueue)
+					lock (_eventQueue)
 					{
-						while (eventQueue.Count != 0)
+						while (_eventQueue.Count != 0)
 						{
-							object e = eventQueue.Dequeue();
+							object e = _eventQueue.Dequeue();
 							if (e is WlanConnectionNotificationEventData)
 							{
 								WlanConnectionNotificationEventData wlanConnectionData = (WlanConnectionNotificationEventData)e;
 								// Check if the conditions are good to indicate either success or failure.
-								if (wlanConnectionData.notifyData.notificationSource == WlanNotificationSource.MSM)
+								if (wlanConnectionData.NotifyData.notificationSource == WlanNotificationSource.MSM)
 								{
-									switch ((WlanNotificationCodeMsm)wlanConnectionData.notifyData.notificationCode)
+									switch ((WlanNotificationCodeMsm)wlanConnectionData.NotifyData.notificationCode)
 									{
 										case WlanNotificationCodeMsm.Connected:										
-											if (wlanConnectionData.connNotifyData.profileName == profile)
+											if (wlanConnectionData.ConnNotifyData.profileName == profile)
 												return true;
 											break;
 									}
@@ -417,8 +385,11 @@ namespace SimpleWifi.Win32
 			}
 			finally
 			{
-				queueEvents = false;
-				eventQueue.Clear();
+			    _queueEvents = false;
+			    lock (_eventQueue)
+			    {
+			        _eventQueue.Clear();
+			    }
 			}
 			return false; // timeout expired and no "connection complete"
 		}
@@ -453,7 +424,7 @@ namespace SimpleWifi.Win32
 		/// </param>
 		public void DeleteProfile(string profileName)
 		{
-			WlanInterop.ThrowIfError(WlanInterop.WlanDeleteProfile(client.clientHandle, info.interfaceGuid, profileName, IntPtr.Zero));
+			WlanInterop.ThrowIfError(WlanInterop.WlanDeleteProfile(_client.ClientHandle, _info.interfaceGuid, profileName, IntPtr.Zero));
 		}
 
 		/// <summary>
@@ -467,14 +438,14 @@ namespace SimpleWifi.Win32
 		{
 			WlanReasonCode reasonCode;
 
-			WlanInterop.ThrowIfError(WlanInterop.WlanSetProfile(client.clientHandle, info.interfaceGuid, flags, profileXml, null, overwrite, IntPtr.Zero, out reasonCode));
+			WlanInterop.ThrowIfError(WlanInterop.WlanSetProfile(_client.ClientHandle, _info.interfaceGuid, flags, profileXml, null, overwrite, IntPtr.Zero, out reasonCode));
 
 			return reasonCode;
 		}
 
 		public void SetEAP(string profileName, string userXML)
 		{
-			WlanInterop.ThrowIfError(WlanInterop.WlanSetProfileEapXmlUserData(client.clientHandle, info.interfaceGuid, profileName, SetEapUserDataMode.None, userXML, IntPtr.Zero));
+			WlanInterop.ThrowIfError(WlanInterop.WlanSetProfileEapXmlUserData(_client.ClientHandle, _info.interfaceGuid, profileName, SetEapUserDataMode.None, userXML, IntPtr.Zero));
 		}
 
 		/// <summary>
@@ -488,7 +459,7 @@ namespace SimpleWifi.Win32
 			WlanProfileFlags flags;
 			WlanAccess access;
 
-			WlanInterop.ThrowIfError(WlanInterop.WlanGetProfile(client.clientHandle, info.interfaceGuid, profileName, IntPtr.Zero, out profileXmlPtr, out flags, out access));
+			WlanInterop.ThrowIfError(WlanInterop.WlanGetProfile(_client.ClientHandle, _info.interfaceGuid, profileName, IntPtr.Zero, out profileXmlPtr, out flags, out access));
 
 			try
 			{
@@ -507,7 +478,7 @@ namespace SimpleWifi.Win32
 		public WlanProfileInfo[] GetProfiles()
 		{
 			IntPtr profileListPtr;
-			WlanInterop.ThrowIfError(WlanInterop.WlanGetProfileList(client.clientHandle, info.interfaceGuid, IntPtr.Zero, out profileListPtr));
+			WlanInterop.ThrowIfError(WlanInterop.WlanGetProfileList(_client.ClientHandle, _info.interfaceGuid, IntPtr.Zero, out profileListPtr));
 
 			try
 			{
@@ -532,36 +503,31 @@ namespace SimpleWifi.Win32
 
 		internal void OnWlanConnection(WlanNotificationData notifyData, WlanConnectionNotificationData connNotifyData)
 		{
-			if (WlanConnectionNotification != null)
-				WlanConnectionNotification(notifyData, connNotifyData);
+		    WlanConnectionNotification?.Invoke(notifyData, connNotifyData);
 
-			if (queueEvents)
-			{
-				WlanConnectionNotificationEventData queuedEvent = new WlanConnectionNotificationEventData();
-				queuedEvent.notifyData = notifyData;
-				queuedEvent.connNotifyData = connNotifyData;
-				EnqueueEvent(queuedEvent);
-			}
+		    if (!_queueEvents) return;
+		    WlanConnectionNotificationEventData queuedEvent = new WlanConnectionNotificationEventData();
+		    queuedEvent.NotifyData = notifyData;
+		    queuedEvent.ConnNotifyData = connNotifyData;
+		    EnqueueEvent(queuedEvent);
 		}
 
 		internal void OnWlanReason(WlanNotificationData notifyData, WlanReasonCode reasonCode)
 		{
-			if (WlanReasonNotification != null)
-				WlanReasonNotification(notifyData, reasonCode);
+		    WlanReasonNotification?.Invoke(notifyData, reasonCode);
 
-			if (queueEvents)
-			{
-				WlanReasonNotificationData queuedEvent = new WlanReasonNotificationData();
-				queuedEvent.notifyData = notifyData;
-				queuedEvent.reasonCode = reasonCode;
-				EnqueueEvent(queuedEvent);
-			}
+		    if (!_queueEvents) return;
+		    WlanReasonNotificationData queuedEvent = new WlanReasonNotificationData
+		    {
+		        NotifyData = notifyData,
+		        ReasonCode = reasonCode
+		    };
+		    EnqueueEvent(queuedEvent);
 		}
 
 		internal void OnWlanNotification(WlanNotificationData notifyData)
 		{
-			if (WlanNotification != null)
-				WlanNotification(notifyData);
+		    WlanNotification?.Invoke(notifyData);
 		}
 
 		/// <summary>
@@ -569,10 +535,10 @@ namespace SimpleWifi.Win32
 		/// </summary>
 		private void EnqueueEvent(object queuedEvent)
 		{
-			lock (eventQueue)
-				eventQueue.Enqueue(queuedEvent);
+			lock (_eventQueue)
+				_eventQueue.Enqueue(queuedEvent);
 
-			eventQueueFilled.Set();
+			_eventQueueFilled.Set();
 		}
 
 
@@ -595,7 +561,7 @@ namespace SimpleWifi.Win32
 
 			try
 			{
-				WlanInterop.ThrowIfError(WlanInterop.WlanSetInterface(client.clientHandle, info.interfaceGuid, opCode, sizeof(int), valuePtr, IntPtr.Zero));
+				WlanInterop.ThrowIfError(WlanInterop.WlanSetInterface(_client.ClientHandle, _info.interfaceGuid, opCode, sizeof(int), valuePtr, IntPtr.Zero));
 			}
 			finally
 			{
@@ -622,7 +588,7 @@ namespace SimpleWifi.Win32
 			int valueSize;
 			WlanOpcodeValueType opcodeValueType;
 
-			WlanInterop.ThrowIfError(WlanInterop.WlanQueryInterface(client.clientHandle, info.interfaceGuid, opCode, IntPtr.Zero, out valueSize, out valuePtr, out opcodeValueType));
+			WlanInterop.ThrowIfError(WlanInterop.WlanQueryInterface(_client.ClientHandle, _info.interfaceGuid, opCode, IntPtr.Zero, out valueSize, out valuePtr, out opcodeValueType));
 
 			try
 			{

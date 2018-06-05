@@ -10,17 +10,16 @@ namespace SimpleWifi
 {
 	public class AuthRequest
 	{
-		private bool _isPasswordRequired, _isUsernameRequired, _isDomainSupported, _isEAPStore;
-		private string _password, _username, _domain;
-		private WlanAvailableNetwork _network;
-		private WlanInterface _interface;
+	    private readonly bool _isEAPStore;
+	    private readonly WlanAvailableNetwork _network;
+		private readonly WlanInterface _interface;
 
 		public AuthRequest(AccessPoint ap)
 		{	
 			_network	= ap.Network;
 			_interface	= ap.Interface;
 
-			_isPasswordRequired = 
+			IsPasswordRequired = 
 				_network.securityEnabled &&
 				_network.dot11DefaultCipherAlgorithm != Dot11CipherAlgorithm.None;
 
@@ -28,38 +27,26 @@ namespace SimpleWifi
 				_network.dot11DefaultAuthAlgorithm == Dot11AuthAlgorithm.RSNA ||
 				_network.dot11DefaultAuthAlgorithm == Dot11AuthAlgorithm.WPA;
 
-			_isUsernameRequired = _isEAPStore;
-			_isDomainSupported	= _isEAPStore;
+			IsUsernameRequired = _isEAPStore;
+			IsDomainSupported	= _isEAPStore;
 		}
 		
-		public bool IsPasswordRequired	{ get { return _isPasswordRequired; } }
-		public bool IsUsernameRequired	{ get { return _isUsernameRequired; } }
-		public bool IsDomainSupported	{ get { return _isDomainSupported; } }
+		public bool IsPasswordRequired { get; }
+	    public bool IsUsernameRequired { get; }
+	    public bool IsDomainSupported { get; }
 
-		public string Password
-		{
-			get { return _password; }
-			set { _password = value; }
-		}
+	    public string Password { get; set; }
 
-		public string Username
-		{
-			get { return _username; }
-			set { _username = value; }
-		}
+	    public string Username { get; set; }
 
-		public string Domain
-		{
-			get { return _domain; }
-			set { _domain = value; }
-		}
+	    public string Domain { get; set; }
 
-		public bool IsPasswordValid
+	    public bool IsPasswordValid
 		{
 			get
 			{
 				#warning Robin: Not sure that Enterprise networks have the same requirements on the password complexity as standard ones.
-				return PasswordHelper.IsValid(_password, _network.dot11DefaultCipherAlgorithm);
+				return PasswordHelper.IsValid(Password, _network.dot11DefaultCipherAlgorithm);
 			}
 		}
 		
@@ -68,7 +55,7 @@ namespace SimpleWifi
 			if (!_isEAPStore || !IsPasswordValid)
 				return false;
 
-			string userXML = EapUserFactory.Generate(_network.dot11DefaultCipherAlgorithm, _username, _password, _domain);
+			string userXML = EapUserFactory.Generate(_network.dot11DefaultCipherAlgorithm, Username, Password, Domain);
 			_interface.SetEAP(_network.profileName, userXML);
 
 			return true;		
@@ -79,7 +66,7 @@ namespace SimpleWifi
 			if (!IsPasswordValid)
 				return false;
 			
-			string profileXML = ProfileFactory.Generate(_network, _password);
+			string profileXML = ProfileFactory.Generate(_network, Password);
 			_interface.SetProfile(WlanProfileFlags.AllUser, profileXML, true);
 
 			if (_isEAPStore && !SaveToEAP())

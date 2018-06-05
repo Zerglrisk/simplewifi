@@ -40,7 +40,7 @@ namespace SimpleWifi
 		/// </summary>
 		private static string GetTemplate(string name)
 		{
-			string resourceName = string.Format("SimpleWifi.EapUserXML.{0}.xml", name);
+			string resourceName = $"SimpleWifi.EapUserXML.{name}.xml";
 
 			using (StreamReader reader = new StreamReader(Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName)))
 			{
@@ -61,7 +61,7 @@ namespace SimpleWifi
 
 		private static string EncodeToBase64(string toEncode)
 		{
-			byte[] toEncodeAsBytes = System.Text.ASCIIEncoding.ASCII.GetBytes(toEncode);
+			byte[] toEncodeAsBytes = System.Text.Encoding.UTF8.GetBytes(toEncode);
 			string returnValue = System.Convert.ToBase64String(toEncodeAsBytes);
 			return returnValue;
 		}

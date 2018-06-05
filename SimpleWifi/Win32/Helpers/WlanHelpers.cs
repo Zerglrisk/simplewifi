@@ -17,13 +17,11 @@ namespace SimpleWifi.Win32.Helpers
 
 			WlanConnectionNotificationData connNotifyData = (WlanConnectionNotificationData)Marshal.PtrToStructure(notifyData.dataPtr, typeof(WlanConnectionNotificationData));
 
-			if (connNotifyData.wlanReasonCode == WlanReasonCode.Success)
-			{
-				long profileXmlPtrValue = notifyData.dataPtr.ToInt64() + Marshal.OffsetOf(typeof(WlanConnectionNotificationData), "profileXml").ToInt64();
-				connNotifyData.profileXml = Marshal.PtrToStringUni(new IntPtr(profileXmlPtrValue));
-			}
+		    if (connNotifyData.wlanReasonCode != WlanReasonCode.Success) return connNotifyData;
+		    long profileXmlPtrValue = notifyData.dataPtr.ToInt64() + Marshal.OffsetOf(typeof(WlanConnectionNotificationData), "profileXml").ToInt64();
+		    connNotifyData.profileXml = Marshal.PtrToStringUni(new IntPtr(profileXmlPtrValue));
 
-			return connNotifyData;
+		    return connNotifyData;
 		}
 
 		/// <summary>
@@ -35,13 +33,11 @@ namespace SimpleWifi.Win32.Helpers
 		{
 			StringBuilder sb = new StringBuilder(1024); // the 1024 size here is arbitrary; the WlanReasonCodeToString docs fail to specify a recommended size
 
-			if (WlanInterop.WlanReasonCodeToString(reasonCode, sb.Capacity, sb, IntPtr.Zero) != 0)
-			{
-				sb.Clear(); // Not sure if we get junk in the stringbuilder buffer from WlanReasonCodeToString, clearing it to be sure. 
-				sb.Append("Failed to retrieve reason code, probably too small buffer.");
-			}
+		    if (WlanInterop.WlanReasonCodeToString(reasonCode, sb.Capacity, sb, IntPtr.Zero) == 0) return sb.ToString();
+		    sb.Clear(); // Not sure if we get junk in the stringbuilder buffer from WlanReasonCodeToString, clearing it to be sure. 
+		    sb.Append("Failed to retrieve reason code, probably too small buffer.");
 
-			return sb.ToString();
+		    return sb.ToString();
 		}
 	}
 }

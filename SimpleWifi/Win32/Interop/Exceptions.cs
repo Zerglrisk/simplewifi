@@ -10,23 +10,18 @@ namespace SimpleWifi.Win32.Interop
 	/// </summary>
 	public class WlanException : Exception
 	{
-		private WlanReasonCode reasonCode;
-
-		WlanException(WlanReasonCode reasonCode)
+	    WlanException(WlanReasonCode reasonCode)
 		{
-			this.reasonCode = reasonCode;
+			this.ReasonCode = reasonCode;
 		}
 
 		/// <summary>
 		/// Gets the WLAN reason code.
 		/// </summary>
 		/// <value>The WLAN reason code.</value>
-		public WlanReasonCode ReasonCode
-		{
-			get { return reasonCode; }
-		}
+		public WlanReasonCode ReasonCode { get; }
 
-		/// <summary>
+	    /// <summary>
 		/// Gets a message that describes the reason code.
 		/// </summary>
 		/// <value></value>
@@ -35,12 +30,9 @@ namespace SimpleWifi.Win32.Interop
 		{
 			get
 			{
-				StringBuilder sb = new StringBuilder(1024);
+			    StringBuilder sb = new StringBuilder(1024);
 
-				if (WlanInterop.WlanReasonCodeToString(reasonCode, sb.Capacity, sb, IntPtr.Zero) == 0)
-					return sb.ToString();
-				else
-					return string.Empty;
+			    return WlanInterop.WlanReasonCodeToString(ReasonCode, sb.Capacity, sb, IntPtr.Zero) == 0 ? sb.ToString() : string.Empty;
 			}
 		}
 	}

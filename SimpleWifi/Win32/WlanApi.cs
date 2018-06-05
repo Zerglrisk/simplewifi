@@ -19,11 +19,11 @@ namespace SimpleWifi.Win32
 	/// </remarks>
 	public class WlanClient
 	{
-		internal IntPtr clientHandle;
-		internal uint negotiatedVersion;
-		internal WlanInterop.WlanNotificationCallbackDelegate wlanNotificationCallback;
+		internal IntPtr ClientHandle;
+		internal uint NegotiatedVersion;
+		internal WlanInterop.WlanNotificationCallbackDelegate WlanNotificationCallback;
 
-		private Dictionary<Guid,WlanInterface> ifaces = new Dictionary<Guid,WlanInterface>();
+		private Dictionary<Guid,WlanInterface> _ifaces = new Dictionary<Guid,WlanInterface>();
 
 		private const int NO_WIFI = 1062;
 
@@ -53,7 +53,7 @@ namespace SimpleWifi.Win32
 				// It can be SP2 without hotfix which would generate exception
 				try
 				{
-					errorCode = WlanInterop.WlanOpenHandle(WlanInterop.WLAN_CLIENT_VERSION_XP_SP2, IntPtr.Zero, out negotiatedVersion, out clientHandle);					
+					errorCode = WlanInterop.WlanOpenHandle(WlanInterop.WLAN_CLIENT_VERSION_XP_SP2, IntPtr.Zero, out NegotiatedVersion, out ClientHandle);					
 				}
 				catch
 				{
@@ -74,14 +74,14 @@ namespace SimpleWifi.Win32
 			try
 			{
 				// Interop callback
-				wlanNotificationCallback = new WlanInterop.WlanNotificationCallbackDelegate(OnWlanNotification);
+				WlanNotificationCallback = new WlanInterop.WlanNotificationCallbackDelegate(OnWlanNotification);
 
 				WlanNotificationSource prevSrc;
-				WlanInterop.ThrowIfError(WlanInterop.WlanRegisterNotification(clientHandle, WlanNotificationSource.All, false, wlanNotificationCallback, IntPtr.Zero, IntPtr.Zero, out prevSrc));
+				WlanInterop.ThrowIfError(WlanInterop.WlanRegisterNotification(ClientHandle, WlanNotificationSource.All, false, WlanNotificationCallback, IntPtr.Zero, IntPtr.Zero, out prevSrc));
 			}
 			catch
 			{
-				WlanInterop.WlanCloseHandle(clientHandle, IntPtr.Zero);
+				WlanInterop.WlanCloseHandle(ClientHandle, IntPtr.Zero);
 				throw;
 			}
 		}
@@ -91,10 +91,12 @@ namespace SimpleWifi.Win32
 			// Free the handle when deconstructing the client. There won't be a handle if its xp sp 2 without wlanapi installed
 			try
 			{
-				WlanInterop.WlanCloseHandle(clientHandle, IntPtr.Zero);
+				WlanInterop.WlanCloseHandle(ClientHandle, IntPtr.Zero);
 			}
-			catch
-			{ }
+		    catch
+		    {
+		        // ignored
+		    }
 		}
 
 		// Called from interop
@@ -103,69 +105,68 @@ namespace SimpleWifi.Win32
 			if (NoWifiAvailable)
 				return;
 
-			WlanInterface wlanIface = ifaces.ContainsKey(notifyData.interfaceGuid) ? ifaces[notifyData.interfaceGuid] : null;
+			WlanInterface wlanIface = _ifaces.ContainsKey(notifyData.interfaceGuid) ? _ifaces[notifyData.interfaceGuid] : null;
 
-			switch(notifyData.notificationSource)
-			{
-				case WlanNotificationSource.ACM:
-					switch((WlanNotificationCodeAcm)notifyData.notificationCode)
-					{
-						case WlanNotificationCodeAcm.ConnectionStart:
-						case WlanNotificationCodeAcm.ConnectionComplete:
-						case WlanNotificationCodeAcm.ConnectionAttemptFail:
-						case WlanNotificationCodeAcm.Disconnecting:
-						case WlanNotificationCodeAcm.Disconnected:
-							WlanConnectionNotificationData? connNotifyData = WlanHelpers.ParseWlanConnectionNotification(ref notifyData);
+		    if (notifyData.notificationSource == WlanNotificationSource.ACM)
+		        switch ((WlanNotificationCodeAcm) notifyData.notificationCode)
+		        {
+		            case WlanNotificationCodeAcm.ConnectionStart:
+		            case WlanNotificationCodeAcm.ConnectionComplete:
+		            case WlanNotificationCodeAcm.ConnectionAttemptFail:
+		            case WlanNotificationCodeAcm.Disconnecting:
+		            case WlanNotificationCodeAcm.Disconnected:
+		                WlanConnectionNotificationData? connNotifyData =
+		                    WlanHelpers.ParseWlanConnectionNotification(ref notifyData);
 
-							if (connNotifyData.HasValue && wlanIface != null)
-								wlanIface.OnWlanConnection(notifyData, connNotifyData.Value);
+		                if (connNotifyData.HasValue && wlanIface != null)
+		                    wlanIface.OnWlanConnection(notifyData, connNotifyData.Value);
 
-							break;
-						case WlanNotificationCodeAcm.ScanFail:
-							int expectedSize = Marshal.SizeOf(typeof(int));
+		                break;
+		            case WlanNotificationCodeAcm.ScanFail:
+		                int expectedSize = Marshal.SizeOf(typeof(int));
 
-							if (notifyData.dataSize >= expectedSize)
-							{
-								int reasonInt = Marshal.ReadInt32(notifyData.dataPtr);
+		                if (notifyData.dataSize >= expectedSize)
+		                {
+		                    int reasonInt = Marshal.ReadInt32(notifyData.dataPtr);
 
-								// Want to make sure this doesn't crash if windows sends a reasoncode not defined in the enum.
-								if (Enum.IsDefined(typeof(WlanReasonCode), reasonInt))
-								{
-									WlanReasonCode reasonCode = (WlanReasonCode)reasonInt;
+		                    // Want to make sure this doesn't crash if windows sends a reasoncode not defined in the enum.
+		                    if (Enum.IsDefined(typeof(WlanReasonCode), reasonInt))
+		                    {
+		                        WlanReasonCode reasonCode = (WlanReasonCode) reasonInt;
 
-									if (wlanIface != null)
-										wlanIface.OnWlanReason(notifyData, reasonCode);
-								}
-							}
-							break;
-					}
-					break;
-				case WlanNotificationSource.MSM:
-					switch((WlanNotificationCodeMsm)notifyData.notificationCode)
-					{
-						case WlanNotificationCodeMsm.Associating:
-						case WlanNotificationCodeMsm.Associated:
-						case WlanNotificationCodeMsm.Authenticating:
-						case WlanNotificationCodeMsm.Connected:
-						case WlanNotificationCodeMsm.RoamingStart:
-						case WlanNotificationCodeMsm.RoamingEnd:
-						case WlanNotificationCodeMsm.Disassociating:
-						case WlanNotificationCodeMsm.Disconnected:
-						case WlanNotificationCodeMsm.PeerJoin:
-						case WlanNotificationCodeMsm.PeerLeave:
-						case WlanNotificationCodeMsm.AdapterRemoval:
-							WlanConnectionNotificationData? connNotifyData = WlanHelpers.ParseWlanConnectionNotification(ref notifyData);
-							
-							if (connNotifyData.HasValue && wlanIface != null)
-									wlanIface.OnWlanConnection(notifyData, connNotifyData.Value);
+		                        if (wlanIface != null)
+		                            wlanIface.OnWlanReason(notifyData, reasonCode);
+		                    }
+		                }
 
-							break;
-					}
-					break;
-			}
-			
-			if (wlanIface != null)
-				wlanIface.OnWlanNotification(notifyData);
+		                break;
+		        }
+		    else if (notifyData.notificationSource == WlanNotificationSource.MSM)
+		    {
+		        switch ((WlanNotificationCodeMsm) notifyData.notificationCode)
+		        {
+		            case WlanNotificationCodeMsm.Associating:
+		            case WlanNotificationCodeMsm.Associated:
+		            case WlanNotificationCodeMsm.Authenticating:
+		            case WlanNotificationCodeMsm.Connected:
+		            case WlanNotificationCodeMsm.RoamingStart:
+		            case WlanNotificationCodeMsm.RoamingEnd:
+		            case WlanNotificationCodeMsm.Disassociating:
+		            case WlanNotificationCodeMsm.Disconnected:
+		            case WlanNotificationCodeMsm.PeerJoin:
+		            case WlanNotificationCodeMsm.PeerLeave:
+		            case WlanNotificationCodeMsm.AdapterRemoval:
+		                WlanConnectionNotificationData? connNotifyData =
+		                    WlanHelpers.ParseWlanConnectionNotification(ref notifyData);
+
+		                if (connNotifyData.HasValue)
+		                    wlanIface?.OnWlanConnection(notifyData, connNotifyData.Value);
+
+		                break;
+		        }
+		    }
+
+		    wlanIface?.OnWlanNotification(notifyData);
 		}
 
 		/// <summary>
@@ -187,7 +188,7 @@ namespace SimpleWifi.Win32
 					return null;
 				IntPtr ifaceList;
 
-				WlanInterop.ThrowIfError(WlanInterop.WlanEnumInterfaces(clientHandle, IntPtr.Zero, out ifaceList)); 
+				WlanInterop.ThrowIfError(WlanInterop.WlanEnumInterfaces(ClientHandle, IntPtr.Zero, out ifaceList)); 
 
 				try
 				{
@@ -205,18 +206,15 @@ namespace SimpleWifi.Win32
 						currentIfaceGuids.Add(info.interfaceGuid);
 
 						WlanInterface wlanIface;
-						if (ifaces.ContainsKey(info.interfaceGuid))
-							wlanIface = ifaces[info.interfaceGuid];
-						else
-							wlanIface = new WlanInterface(this, info);
+						wlanIface = _ifaces.ContainsKey(info.interfaceGuid) ? _ifaces[info.interfaceGuid] : new WlanInterface(this, info);
 
 						interfaces[i] = wlanIface;
-						ifaces[info.interfaceGuid] = wlanIface;
+						_ifaces[info.interfaceGuid] = wlanIface;
 					}
 
 					// Remove stale interfaces
 					Queue<Guid> deadIfacesGuids = new Queue<Guid>();
-					foreach (Guid ifaceGuid in ifaces.Keys)
+					foreach (Guid ifaceGuid in _ifaces.Keys)
 					{
 						if (!currentIfaceGuids.Contains(ifaceGuid))
 							deadIfacesGuids.Enqueue(ifaceGuid);
@@ -225,7 +223,7 @@ namespace SimpleWifi.Win32
 					while(deadIfacesGuids.Count != 0)
 					{
 						Guid deadIfaceGuid = deadIfacesGuids.Dequeue();
-						ifaces.Remove(deadIfaceGuid);						
+						_ifaces.Remove(deadIfaceGuid);						
 					}
 
 					return interfaces;

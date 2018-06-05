@@ -14,7 +14,7 @@ namespace SimpleWifi
 	{
 		public event EventHandler<WifiStatusEventArgs> ConnectionStatusChanged;
 		
-		private WlanClient _client;
+		private readonly WlanClient _client;
 		private WifiStatus _connectionStatus;
         private bool _isConnectionStatusSet = false;
         public bool NoWifiAvailable = false;
@@ -48,7 +48,7 @@ namespace SimpleWifi
 				foreach (WlanAvailableNetwork network in rawNetworks)
 				{
 					bool hasProfileName						= !string.IsNullOrEmpty(network.profileName);
-					bool anotherInstanceWithProfileExists	= rawNetworks.Where(n => n.Equals(network) && !string.IsNullOrEmpty(n.profileName)).Any();
+					bool anotherInstanceWithProfileExists	= rawNetworks.Any(n => n.Equals(network) && !string.IsNullOrEmpty(n.profileName));
 
 					if (!anotherInstanceWithProfileExists || hasProfileName)
 						networks.Add(network);
@@ -104,8 +104,7 @@ namespace SimpleWifi
 		{
 			ConnectionStatus = newStatus;
 
-			if (ConnectionStatusChanged != null)
-				ConnectionStatusChanged(this, new WifiStatusEventArgs(newStatus));
+		    ConnectionStatusChanged?.Invoke(this, new WifiStatusEventArgs(newStatus));
 		}
 
 		// I don't like this method, it's slow, ugly and should be refactored ASAP.
@@ -123,13 +122,13 @@ namespace SimpleWifi
 					var a = i.CurrentConnection; // Current connection throws an exception if disconnected.
 					connected = true;
 				}
-				catch {	}
+			    catch
+			    {
+			        // ignored
+			    }
 			}
 
-			if (connected)
-				return WifiStatus.Connected;
-			else
-				return WifiStatus.Disconnected;
+			return connected ? WifiStatus.Connected : WifiStatus.Disconnected;
 		}		
 	}
 

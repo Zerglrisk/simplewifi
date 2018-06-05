@@ -18,7 +18,7 @@ namespace SimpleWifi
 		{
 			string profile	= string.Empty;
 			string template = string.Empty;
-			string name		= Encoding.ASCII.GetString(network.dot11Ssid.SSID, 0, (int)network.dot11Ssid.SSIDLength);
+			string name		= Encoding.UTF8.GetString(network.dot11Ssid.SSID, 0, (int)network.dot11Ssid.SSIDLength);
 			string hex		= GetHexString(network.dot11Ssid.SSID);	
 
 			var authAlgo = network.dot11DefaultAuthAlgorithm;
@@ -71,7 +71,7 @@ namespace SimpleWifi
 		/// </summary>
 		private static string GetTemplate(string name)
 		{
-			string resourceName = string.Format("SimpleWifi.ProfileXML.{0}.xml", name);
+			string resourceName = $"SimpleWifi.ProfileXML.{name}.xml";
 
 			using (StreamReader reader = new StreamReader(Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName)))
 			{

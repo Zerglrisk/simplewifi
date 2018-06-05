@@ -34,9 +34,9 @@ namespace SimpleWifi.Win32.Interop
 
 		[DllImport("wlanapi.dll")]
 		public static extern int WlanOpenHandle(
-			[In] UInt32 clientVersion,
+			[In] uint clientVersion,
 			[In, Out] IntPtr pReserved,
-			[Out] out UInt32 negotiatedVersion,
+			[Out] out uint negotiatedVersion,
 			[Out] out IntPtr clientHandle);
 
 		[DllImport("wlanapi.dll")]

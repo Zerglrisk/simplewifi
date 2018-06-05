@@ -12,32 +12,17 @@ namespace SimpleWifi
 {
 	public class AccessPoint
 	{
-		private WlanInterface _interface;
-		private WlanAvailableNetwork _network;
-
-		internal AccessPoint(WlanInterface interfac, WlanAvailableNetwork network)
+	    internal AccessPoint(WlanInterface interfac, WlanAvailableNetwork network)
 		{
-			_interface = interfac;
-			_network = network;
+			Interface = interfac;
+			Network = network;
 		}
 
-		public string Name
-		{
-			get
-			{
-				return Encoding.ASCII.GetString(_network.dot11Ssid.SSID, 0, (int)_network.dot11Ssid.SSIDLength);
-			}
-		}
+		public string Name => Encoding.UTF8.GetString(Network.dot11Ssid.SSID, 0, (int)Network.dot11Ssid.SSIDLength);
 
-		public uint SignalStrength
-		{
-			get
-			{
-				return _network.wlanSignalQuality;
-			}
-		}
+	    public uint SignalStrength => Network.wlanSignalQuality;
 
-		/// <summary>
+	    /// <summary>
 		/// If the computer has a connection profile stored for this access point
 		/// </summary>
 		public bool HasProfile
@@ -46,7 +31,7 @@ namespace SimpleWifi
 			{
 				try
 				{
-					return _interface.GetProfiles().Where(p => p.profileName == Name).Any();
+					return Interface.GetProfiles().Any(p => p.profileName == Name);
 				}
 				catch 
 				{ 
@@ -55,22 +40,16 @@ namespace SimpleWifi
 			}
 		}
 		
-		public bool IsSecure
-		{
-			get
-			{
-				return _network.securityEnabled;
-			}
-		}
+		public bool IsSecure => Network.securityEnabled;
 
-		public bool IsConnected
+	    public bool IsConnected
 		{
 			get
 			{
 				try
 				{
-					var a = _interface.CurrentConnection; // This prop throws exception if not connected, which forces me to this try catch. Refactor plix.
-					return a.profileName == _network.profileName;
+					var a = Interface.CurrentConnection; // This prop throws exception if not connected, which forces me to this try catch. Refactor plix.
+					return a.profileName == Network.profileName;
 				}
 				catch
 				{
@@ -83,32 +62,20 @@ namespace SimpleWifi
 		/// <summary>
 		/// Returns the underlying network object.
 		/// </summary>
-		internal WlanAvailableNetwork Network
-		{
-			get
-			{
-				return _network;
-			}
-		}
+		internal WlanAvailableNetwork Network { get; }
 
 
-		/// <summary>
+	    /// <summary>
 		/// Returns the underlying interface object.
 		/// </summary>
-		internal WlanInterface Interface
-		{
-			get
-			{
-				return _interface;
-			}
-		}
+		internal WlanInterface Interface { get; }
 
-		/// <summary>
+	    /// <summary>
 		/// Checks that the password format matches this access point's encryption method.
 		/// </summary>
 		public bool IsValidPassword(string password)
 		{
-			return PasswordHelper.IsValid(password, _network.dot11DefaultCipherAlgorithm);
+			return PasswordHelper.IsValid(password, Network.dot11DefaultCipherAlgorithm);
 		}		
 		
 		/// <summary>
@@ -121,18 +88,17 @@ namespace SimpleWifi
 				return false;
 
 			// If we should create or overwrite the profile, do so.
-			if (!HasProfile || overwriteProfile)
-			{				
-				if (HasProfile)
-					_interface.DeleteProfile(Name);
+		    if (HasProfile && !overwriteProfile)
+		        return Interface.ConnectSynchronously(WlanConnectionMode.Profile, Network.dot11BssType, Name, 6000);
+		    if (HasProfile)
+		        Interface.DeleteProfile(Name);
 
-				request.Process();				
-			}
+		    request.Process();
 
 
-			// TODO: Auth algorithm: IEEE80211_Open + Cipher algorithm: None throws an error.
+		    // TODO: Auth algorithm: IEEE80211_Open + Cipher algorithm: None throws an error.
 			// Probably due to connectionmode profile + no profile exist, cant figure out how to solve it though.
-			return _interface.ConnectSynchronously(WlanConnectionMode.Profile, _network.dot11BssType, Name, 6000);			
+			return Interface.ConnectSynchronously(WlanConnectionMode.Profile, Network.dot11BssType, Name, 6000);			
 		}
 
 		/// <summary>
@@ -153,17 +119,13 @@ namespace SimpleWifi
 					success = false;
 				}
 
-				if (onConnectComplete != null)
-					onConnectComplete(success);
+			    onConnectComplete?.Invoke(success);
 			}));
 		}
 				
 		public string GetProfileXML()
 		{
-			if (HasProfile)
-				return _interface.GetProfileXml(Name);
-			else
-				return string.Empty;
+		    return HasProfile ? Interface.GetProfileXml(Name) : string.Empty;
 		}
 
 		public void DeleteProfile()
@@ -171,22 +133,25 @@ namespace SimpleWifi
 			try
 			{
 				if (HasProfile)
-					_interface.DeleteProfile(Name);
+					Interface.DeleteProfile(Name);
 			}
-			catch { }
+		    catch
+		    {
+		        // ignored
+		    }
 		}
 
-		public override sealed string ToString()
+		public sealed override string ToString()
 		{
 			StringBuilder info = new StringBuilder();
-			info.AppendLine("Interface: " + _interface.InterfaceName);
-			info.AppendLine("Auth algorithm: " + _network.dot11DefaultAuthAlgorithm);
-			info.AppendLine("Cipher algorithm: " + _network.dot11DefaultCipherAlgorithm);
-			info.AppendLine("BSS type: " + _network.dot11BssType);
-			info.AppendLine("Connectable: " + _network.networkConnectable);
+			info.AppendLine("Interface: " + Interface.InterfaceName);
+			info.AppendLine("Auth algorithm: " + Network.dot11DefaultAuthAlgorithm);
+			info.AppendLine("Cipher algorithm: " + Network.dot11DefaultCipherAlgorithm);
+			info.AppendLine("BSS type: " + Network.dot11BssType);
+			info.AppendLine("Connectable: " + Network.networkConnectable);
 			
-			if (!_network.networkConnectable)
-				info.AppendLine("Reason to false: " + _network.wlanNotConnectableReason);
+			if (!Network.networkConnectable)
+				info.AppendLine("Reason to false: " + Network.wlanNotConnectableReason);
 
 			return info.ToString();
 		}

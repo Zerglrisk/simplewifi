@@ -8,13 +8,13 @@ namespace SimpleWifi.Win32
 {
 	internal struct WlanConnectionNotificationEventData
 	{
-		public WlanNotificationData notifyData;
-		public WlanConnectionNotificationData connNotifyData;
+		public WlanNotificationData NotifyData;
+		public WlanConnectionNotificationData ConnNotifyData;
 	}
 
 	internal struct WlanReasonNotificationData
 	{
-		public WlanNotificationData notifyData;
-		public WlanReasonCode reasonCode;
+		public WlanNotificationData NotifyData;
+		public WlanReasonCode ReasonCode;
 	}
 }

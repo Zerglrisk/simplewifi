@@ -31,6 +31,7 @@ namespace SimpleWifi
 	    public string NetworkType => Network.dot11BssType.ToString();
         /// <summary>
         /// It Support For WIndows 7
+        /// You Can Get Channel, Mac Address, Speed, RadioType,SignalStrength here
         /// </summary>
 	    public List<WlanBssEntry> Bssids { get; } // => Interface.GetNetworkBssList(Network.dot11Ssid, Network.dot11BssType).ToList();
         /// <summary>

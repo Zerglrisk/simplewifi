@@ -111,10 +111,10 @@
     <EmbeddedResource Include="ProfileXML\OPEN.xml" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ProfileXML\Single-Sign-OnFor7.xml" />
+    <Content Include="ProfileXML\Single-Sign-On.xml" />
     <Content Include="ProfileXML\WPA-PSK-Non-Broadcast.xml" />
     <Content Include="ProfileXML\FIPS.xml" />
-    <Content Include="ProfileXML\BootstrapFor7.xml" />
+    <Content Include="ProfileXML\Bootstrap.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

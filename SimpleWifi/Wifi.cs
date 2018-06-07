@@ -184,7 +184,7 @@ namespace SimpleWifi
 	    /// For Test
 	    /// Returns a list over all available access points
 	    /// </summary>
-	    public IEnumerable<AccessPoint> GetAccessPointsEnumberable()
+	    public IEnumerable<AccessPoint> EnumerateAccessPoints()
 	    {
 	        if (_client.NoWifiAvailable) yield break;
 	        foreach (WlanInterface wlanIface in _client.Interfaces)
@@ -208,6 +208,133 @@ namespace SimpleWifi
 	                yield return new AccessPoint(wlanIface, network);
 	            }
 	        }
+	    }
+
+        /// <summary>
+        /// Get known rofile Name from all interfaces.
+        /// </summary>
+        /// <returns></returns>
+	    public List<string> GetKnownProfileNames()
+	    {
+	        List<string> profiles = new List<string>();
+	        if (_client.NoWifiAvailable)
+	            return null;
+
+	        foreach (WlanInterface wlanIface in _client.Interfaces)
+	        {
+	            WlanProfileInfo[] rawProfileInfo = wlanIface.GetProfiles();
+
+	            foreach (WlanProfileInfo profileInfo in rawProfileInfo)
+	            {
+	                bool anotherInstanceWithProfileExists =
+	                    rawProfileInfo.Any(n => n.Equals(profileInfo) && !string.IsNullOrEmpty(n.profileName));
+
+	                if (!anotherInstanceWithProfileExists)
+	                    profiles.Add(profileInfo.profileName);
+	            }
+	        }
+	        return profiles;
+	    }
+
+        /// <summary>
+        /// Get known profile names from specified interface.
+        /// </summary>
+        /// <param name="wlanIface"></param>
+        /// <returns></returns>
+	    public List<string> GetKnownProfileNames(WlanInterface wlanIface)
+	    {
+	        List<string> profiles = new List<string>();
+	        if (_client.NoWifiAvailable)
+	            return null;
+
+	        WlanProfileInfo[] rawProfileInfo = wlanIface.GetProfiles();
+
+	        foreach (WlanProfileInfo profileInfo in rawProfileInfo)
+	        {
+	            bool anotherInstanceWithProfileExists =
+	                rawProfileInfo.Any(n => n.Equals(profileInfo) && !string.IsNullOrEmpty(n.profileName));
+
+	            if (!anotherInstanceWithProfileExists)
+	                profiles.Add(profileInfo.profileName);
+	        }
+
+	        return profiles;
+	    }
+
+        /// <summary>
+        /// Get Known Profile's Xmls from all interfaces
+        /// </summary>
+        /// <param name="isProtected">if false, key material not encrypted</param>
+        /// <returns></returns>
+	    public List<string> GetKnownProfileXmls(bool isProtected= true)
+	    {
+	        List<string> profiles = new List<string>();
+	        if (_client.NoWifiAvailable)
+	            return null;
+
+	        foreach (WlanInterface wlanIface in _client.Interfaces)
+	        {
+	            string[] rawProfileInfo = wlanIface.GetProfilesXml(isProtected);
+
+	            foreach (string profileInfo in rawProfileInfo)
+	            {
+	                bool anotherInstanceWithProfileExists =
+	                    rawProfileInfo.Any(n => n.Equals(profileInfo) && !string.IsNullOrEmpty(n));
+
+	                if (!anotherInstanceWithProfileExists)
+	                    profiles.Add(profileInfo);
+	            }
+	        }
+	        return profiles;
+        }
+
+        /// <summary>
+        /// Get Known Profile's Xmls from specified interfaces
+        /// </summary>
+        /// <param name="wlanIface"></param>
+        /// <param name="isProtected">if false, key material not encrypted</param>
+        /// <returns></returns>
+	    public List<string> GetKnownProfileXmls(WlanInterface wlanIface, bool isProtected = true)
+	    {
+            List<string> profiles = new List<string>();
+	        if (_client.NoWifiAvailable)
+	            return null;
+
+	        string[] rawProfileInfo = wlanIface.GetProfilesXml(isProtected);
+
+	        foreach (string profileInfo in rawProfileInfo)
+	        {
+	            bool anotherInstanceWithProfileExists =
+	                rawProfileInfo.Any(n => n.Equals(profileInfo) && !string.IsNullOrEmpty(n));
+
+	            if (!anotherInstanceWithProfileExists)
+	                profiles.Add(profileInfo);
+            }
+
+	        return profiles;
+	    }
+
+	    /// <summary>
+	    /// Get Known specified profile's Xml from all interfaces
+	    /// if couple of interface has same profile name, it will return two xml string.
+	    /// </summary>
+	    /// <param name="profileName"></param>
+	    /// <param name="isProtected"></param>
+	    /// <returns></returns>
+	    public List<string> GetKnownProfileXml(string profileName, bool isProtected = true)
+	    {
+	        List<string> profiles = new List<string>();
+	        if (_client.NoWifiAvailable)
+	            return null;
+
+	        foreach (WlanInterface wlanIface in _client.Interfaces)
+	        {
+	            string profileXml = wlanIface.GetProfileXml(profileName, isProtected);
+
+	            if (!string.IsNullOrEmpty(profileXml))
+	                profiles.Add(profileXml);
+	        }
+	        return profiles;
 	    }
 
         /// <summary>

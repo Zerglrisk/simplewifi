@@ -476,35 +476,71 @@ namespace SimpleWifi.Win32
 			}
 		}
 
-		/// <summary>
-		/// Gets the information of all profiles on this interface.
-		/// </summary>
-		/// <returns>The profiles information.</returns>
-		public WlanProfileInfo[] GetProfiles()
-		{
-			IntPtr profileListPtr;
-			WlanInterop.ThrowIfError(WlanInterop.WlanGetProfileList(_client.ClientHandle, _info.interfaceGuid, IntPtr.Zero, out profileListPtr));
+	    /// <summary>
+	    /// Gets the information of all profiles on this interface.
+	    /// </summary>
+	    /// <returns>The profiles information.</returns>
+	    public WlanProfileInfo[] GetProfiles()
+	    {
+	        IntPtr profileListPtr;
+	        WlanInterop.ThrowIfError(WlanInterop.WlanGetProfileList(_client.ClientHandle, _info.interfaceGuid, IntPtr.Zero, out profileListPtr));
 
-			try
-			{
-				WlanProfileInfoListHeader header = (WlanProfileInfoListHeader)Marshal.PtrToStructure(profileListPtr, typeof(WlanProfileInfoListHeader));
-				WlanProfileInfo[] profileInfos = new WlanProfileInfo[header.numberOfItems];
-				long profileListIterator = profileListPtr.ToInt64() + Marshal.SizeOf(header);
+	        try
+	        {
+	            WlanProfileInfoListHeader header = (WlanProfileInfoListHeader)Marshal.PtrToStructure(profileListPtr, typeof(WlanProfileInfoListHeader));
+	            WlanProfileInfo[] profileInfos = new WlanProfileInfo[header.numberOfItems];
+	            long profileListIterator = profileListPtr.ToInt64() + Marshal.SizeOf(header);
 
-				for (int i = 0; i < header.numberOfItems; ++i)
-				{
-					WlanProfileInfo profileInfo = (WlanProfileInfo)Marshal.PtrToStructure(new IntPtr(profileListIterator), typeof(WlanProfileInfo));
-					profileInfos[i] = profileInfo;
-					profileListIterator += Marshal.SizeOf(profileInfo);
-				}
+	            for (int i = 0; i < header.numberOfItems; ++i)
+	            {
+	                WlanProfileInfo profileInfo = (WlanProfileInfo)Marshal.PtrToStructure(new IntPtr(profileListIterator), typeof(WlanProfileInfo));
+	                profileInfos[i] = profileInfo;
+	                profileListIterator += Marshal.SizeOf(profileInfo);
+	            }
 
-				return profileInfos;
-			}
-			finally
-			{
-				WlanInterop.WlanFreeMemory(profileListPtr);
-			}
-		}
+	            return profileInfos;
+	        }
+	        finally
+	        {
+	            WlanInterop.WlanFreeMemory(profileListPtr);
+	        }
+	    }
+
+	    /// <summary>
+	    /// Gets the information of all profiles on this interface.
+	    /// </summary>
+	    /// <returns>The profiles information.</returns>
+	    public string[] GetProfilesXml(bool isProtected)
+	    {
+	        IntPtr profileListPtr;
+	        WlanInterop.ThrowIfError(WlanInterop.WlanGetProfileList(_client.ClientHandle, _info.interfaceGuid, IntPtr.Zero, out profileListPtr));
+
+	        try
+	        {
+	            WlanProfileInfoListHeader header = (WlanProfileInfoListHeader)Marshal.PtrToStructure(profileListPtr, typeof(WlanProfileInfoListHeader));
+	            string[] profileInfos = new string[header.numberOfItems];
+	            long profileListIterator = profileListPtr.ToInt64() + Marshal.SizeOf(header);
+
+	            for (int i = 0; i < header.numberOfItems; ++i)
+	            {
+	                WlanProfileInfo profileInfo = (WlanProfileInfo)Marshal.PtrToStructure(new IntPtr(profileListIterator), typeof(WlanProfileInfo));
+	                profileInfos[i] = this.GetProfileXml(profileInfo.profileName,isProtected);
+	                profileListIterator += Marshal.SizeOf(profileInfo);
+	            }
+
+	            return profileInfos;
+	        }
+	        finally
+	        {
+	            WlanInterop.WlanFreeMemory(profileListPtr);
+	        }
+	    }
+
+        public WlanProfileInfo GetProfile(string profileName)
+	    {
+	        IEnumerable<WlanProfileInfo> Profiles = GetProfiles();
+	        return Profiles.FirstOrDefault(n => n.profileName.Equals(profileName));
+	    }
 
 		internal void OnWlanConnection(WlanNotificationData notifyData, WlanConnectionNotificationData connNotifyData)
 		{

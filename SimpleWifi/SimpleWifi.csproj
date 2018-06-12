@@ -61,6 +61,7 @@
     <Compile Include="AccessPoint.cs" />
     <Compile Include="EapUserFactory.cs" />
     <Compile Include="AuthRequest.cs" />
+    <Compile Include="IO\XML.cs" />
     <Compile Include="ProfileFactory.cs" />
     <Compile Include="Win32\Helpers\WlanHelpers.cs" />
     <Compile Include="Win32\Interop\Enums.cs" />

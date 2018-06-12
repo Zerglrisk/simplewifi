@@ -149,6 +149,26 @@ namespace SimpleWifi
             }
             return info;
         }
+
+        /// <summary>
+        /// If given Xmlstring is WLAN Profile return true.
+        /// </summary>
+        /// <param name="XmlString"></param>
+        /// <returns></returns>
+        public static bool isProfileXml(string XmlString)
+        {
+            XmlDocument xml = new XmlDocument();
+            xml.LoadXml(XmlString);
+
+            XmlNodeList profile = xml.GetElementsByTagName("WLANProfile");
+            if (profile.Count == 0) //it's not wlan profile xml file.
+                return false;
+            else if (profile.Count > 0)
+                return true;
+            else
+                return false;
+        }
+        
         
     }
     public class ParsedWlanProfileInfo //: IEquatable<ParsedWlanProfileInfo>

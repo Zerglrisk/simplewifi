@@ -72,6 +72,7 @@
     <Compile Include="Win32\WlanApi.cs" />
     <Compile Include="Win32\WlanInterface.cs" />
     <Compile Include="Win32\WlanNotificationStructs.cs" />
+    <Compile Include="XMLParser.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
